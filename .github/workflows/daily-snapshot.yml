@@ -1,0 +1,92 @@
+name: Daily USDG snapshot
+
+# Records one market-cap point a day, rebuilds public/usdg-data.json and
+# publishes it. The Framer page reads that file, so this is the only moving
+# part in the whole setup.
+
+on:
+  schedule:
+    # 01:15 UTC — after the UTC day rolls over, and off the hour to dodge the
+    # scheduling pile-up that delays a lot of cron runs on GitHub.
+    - cron: "15 1 * * *"
+  workflow_dispatch:
+    inputs:
+      timestamp:
+        description: "Unix seconds to backfill (optional, blank = today)"
+        required: false
+      value:
+        description: "Market cap in USD (required when backfilling)"
+        required: false
+
+concurrency:
+  group: usdg-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Record snapshot and rebuild payload
+        run: |
+          if [ -n "${{ inputs.timestamp }}" ]; then
+            python3 snapshot_usdg.py "${{ inputs.timestamp }}" "${{ inputs.value }}"
+          else
+            python3 snapshot_usdg.py
+          fi
+
+      - name: Sanity-check the generated payload
+        run: |
+          python3 - <<'PY'
+          import json
+          d = json.load(open("public/usdg-data.json"))
+          assert d["schema"] == 1, "unexpected schema version"
+          assert d["chains"], "no chains in payload"
+          assert len(d["series"]) > 300, "chart series looks truncated"
+          assert sum(c["value"] for c in d["chains"]) == d["total"], "chains do not sum to total"
+          print(f"payload ok: ${d['total']:,} across {len(d['chains'])} chains, as of {d['asOf']}")
+          PY
+
+      - name: Commit the updated history
+        run: |
+          git config user.name  "usdg-snapshot[bot]"
+          git config user.email "usdg-snapshot[bot]@users.noreply.github.com"
+          git add usdg_all.json public/usdg-data.json
+          if git diff --staged --quiet; then
+            echo "nothing changed today"
+          else
+            git commit -m "USDG snapshot $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  # Publishing. Using GitHub Pages; for Cloudflare Pages instead, delete this
+  # job and the upload-pages-artifact step above, and add to the job above:
+  #
+  #   - uses: cloudflare/wrangler-action@v3
+  #     with:
+  #       apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  #       accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  #       command: pages deploy public --project-name=usdg-data
+  deploy:
+    needs: snapshot
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,138 @@
+{
+  "_comment": [
+    "This is the only file you edit to add, remove or change a chain.",
+    "After editing, run:  python3 build_data.py     then deploy the /public folder.",
+    "The Framer component reads the generated JSON at runtime, so adding a chain",
+    "never requires touching Framer.",
+    "",
+    "Fields:",
+    "  name      display name. Must match the key in chain_logos_b64.json for the icon.",
+    "  enabled   set false to stage a chain before it goes live (kept out of the page).",
+    "  color     accent colour used for the card's left rule, bar gradient and hover border.",
+    "  whiteBg   true if the logo is dark artwork that needs a white tile behind it.",
+    "  snapshot  last known supply, used as the fallback if the live read fails.",
+    "  read      how the browser reads live supply.",
+    "              kind: 'evm' | 'solana' | 'none'",
+    "              evm    -> needs contract + decimals + rpcs (calls totalSupply)",
+    "              solana -> needs mint + rpcs (calls getTokenSupply)",
+    "              none   -> no live read; the snapshot value is shown as-is"
+  ],
+  "chains": [
+    {
+      "name": "X Layer",
+      "enabled": true,
+      "color": "#C7C4C2",
+      "whiteBg": true,
+      "snapshot": 1835509357,
+      "read": {
+        "kind": "evm",
+        "decimals": 6,
+        "contract": "0x4ae46a509f6b1d9056937ba4500cb143933d2dc8",
+        "rpcs": [
+          "https://rpc.xlayer.tech"
+        ]
+      }
+    },
+    {
+      "name": "Solana",
+      "enabled": true,
+      "color": "#9945FF",
+      "whiteBg": false,
+      "snapshot": null,
+      "residual": true,
+      "read": {
+        "kind": "solana",
+        "mint": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+        "rpcs": [
+          "https://solana-rpc.publicnode.com",
+          "https://api.mainnet-beta.solana.com",
+          "https://rpc.ankr.com/solana"
+        ]
+      }
+    },
+    {
+      "name": "Ethereum",
+      "enabled": true,
+      "color": "#627EEA",
+      "whiteBg": false,
+      "snapshot": 378670250,
+      "read": {
+        "kind": "evm",
+        "decimals": 6,
+        "contract": "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
+        "rpcs": [
+          "https://cloudflare-eth.com",
+          "https://ethereum-rpc.publicnode.com",
+          "https://rpc.ankr.com/eth",
+          "https://eth.llamarpc.com"
+        ]
+      }
+    },
+    {
+      "name": "Robinhood Chain",
+      "enabled": true,
+      "color": "#CCFF00",
+      "whiteBg": false,
+      "snapshot": 328756086,
+      "read": {
+        "kind": "none",
+        "_note": "RPC is public but the USDG contract is not wired yet. Fill in contract + decimals and switch kind to 'evm' to enable the live read.",
+        "decimals": 6,
+        "contract": null,
+        "rpcs": [
+          "https://rpc.mainnet.chain.robinhood.com"
+        ]
+      }
+    },
+    {
+      "name": "Ink",
+      "enabled": true,
+      "color": "#6A34F0",
+      "whiteBg": true,
+      "snapshot": 21117562,
+      "read": {
+        "kind": "evm",
+        "decimals": 6,
+        "contract": "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
+        "rpcs": [
+          "https://rpc-gel.inkonchain.com"
+        ]
+      }
+    },
+    {
+      "name": "Mantle",
+      "enabled": true,
+      "color": "#93FFD3",
+      "whiteBg": false,
+      "snapshot": 0,
+      "read": {
+        "kind": "evm",
+        "decimals": 6,
+        "_decimals_unverified": "Colleague's note: 'assumed 6 decimals (new deployment, 2026-08-27)'. Verify before this carries real supply \u2014 if it is actually 18, the figure would be overstated by 1e12. The component clamps implausible reads, but the snapshot path has no such guard.",
+        "contract": "0x063C1d1ef6e9099Ce3E8e9AD5C6173d12C49C086",
+        "rpcs": [
+          "https://rpc.mantle.xyz",
+          "https://mantle-rpc.publicnode.com",
+          "https://rpc.ankr.com/mantle"
+        ]
+      }
+    },
+    {
+      "name": "Arbitrum",
+      "enabled": false,
+      "_todo": "Planned in a few weeks. Set enabled=true and fill in the USDG contract address. Logo is already present in chain_logos_b64.json.",
+      "color": "#12AAFF",
+      "whiteBg": false,
+      "snapshot": 0,
+      "read": {
+        "kind": "evm",
+        "decimals": 6,
+        "contract": null,
+        "rpcs": [
+          "https://arb1.arbitrum.io/rpc",
+          "https://arbitrum-one-rpc.publicnode.com"
+        ]
+      }
+    }
+  ]
+}

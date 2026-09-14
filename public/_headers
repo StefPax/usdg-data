@@ -1,0 +1,10 @@
+# Cloudflare Pages / Netlify header rules.
+# The Framer page fetches this JSON from a different origin, so it needs CORS.
+# GitHub Pages already sends Access-Control-Allow-Origin: * and ignores this file.
+
+/usdg-data.json
+  Access-Control-Allow-Origin: *
+  # Rebuilt once a day. Serve from cache but let the CDN refresh in the
+  # background so a visitor never waits on the origin.
+  Cache-Control: public, max-age=300, stale-while-revalidate=86400
+  X-Content-Type-Options: nosniff

@@ -1,8 +1,8 @@
 name: Daily USDG snapshot
 
-# Records one market-cap point a day, rebuilds public/usdg-data.json and
-# publishes it. The Framer page reads that file, so this is the only moving
-# part in the whole setup.
+# Reads every chain's USDG contract on that chain, records the day, rebuilds
+# public/usdg-data.json and publishes it. The Framer page reads that file, so
+# this is the only moving part in the whole setup.
 
 on:
   schedule:
@@ -11,11 +11,20 @@ on:
     - cron: "15 1 * * *"
   workflow_dispatch:
     inputs:
+      mode:
+        description: "What to run"
+        required: true
+        default: snapshot
+        type: choice
+        options:
+          - snapshot # read the chains and record today (same as the daily run)
+          - backfill # fill days missing from the history, from DefiLlama
+          - dry-run # read the chains and report, write and publish nothing
       timestamp:
-        description: "Unix seconds to backfill (optional, blank = today)"
+        description: "Snapshot mode only — Unix seconds to record by hand (blank = today)"
         required: false
       value:
-        description: "Market cap in USD (required when backfilling)"
+        description: "Snapshot mode only — total in USD (required with a timestamp)"
         required: false
 
 concurrency:
@@ -34,31 +43,52 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Record snapshot and rebuild payload
+      - name: Check the pipeline's own tests still pass
+        run: python3 test_pipeline.py
+
+      - name: Run
         run: |
-          if [ -n "${{ inputs.timestamp }}" ]; then
-            python3 snapshot_usdg.py "${{ inputs.timestamp }}" "${{ inputs.value }}"
-          else
-            python3 snapshot_usdg.py
-          fi
+          case "${{ inputs.mode || 'snapshot' }}" in
+            backfill)
+              python3 snapshot_usdg.py --backfill
+              ;;
+            dry-run)
+              python3 snapshot_usdg.py --dry-run
+              ;;
+            *)
+              if [ -n "${{ inputs.timestamp }}" ]; then
+                python3 snapshot_usdg.py "${{ inputs.timestamp }}" "${{ inputs.value }}"
+              else
+                python3 snapshot_usdg.py
+              fi
+              ;;
+          esac
 
       - name: Sanity-check the generated payload
+        if: inputs.mode != 'dry-run'
         run: |
           python3 - <<'PY'
-          import json
+          import json, datetime as dt
           d = json.load(open("public/usdg-data.json"))
           assert d["schema"] == 1, "unexpected schema version"
           assert d["chains"], "no chains in payload"
           assert len(d["series"]) > 300, "chart series looks truncated"
           assert sum(c["value"] for c in d["chains"]) == d["total"], "chains do not sum to total"
+          gaps = [(a, b) for (a, _), (b, _) in zip(d["series"], d["series"][1:]) if b - a > 86400]
+          if gaps:
+              f = lambda t: dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime("%Y-%m-%d")
+              print("::warning::chart has %d gap(s), e.g. %s -> %s. "
+                    "Re-run this workflow with mode=backfill."
+                    % (len(gaps), f(gaps[0][0]), f(gaps[0][1])))
           print(f"payload ok: ${d['total']:,} across {len(d['chains'])} chains, as of {d['asOf']}")
           PY
 
       - name: Commit the updated history
+        if: inputs.mode != 'dry-run'
         run: |
           git config user.name  "usdg-snapshot[bot]"
           git config user.email "usdg-snapshot[bot]@users.noreply.github.com"
-          git add usdg_all.json public/usdg-data.json
+          git add usdg_all.json usdg_chains.json public/usdg-data.json
           if git diff --staged --quiet; then
             echo "nothing changed today"
           else
@@ -67,6 +97,7 @@ jobs:
           fi
 
       - uses: actions/upload-pages-artifact@v3
+        if: inputs.mode != 'dry-run'
         with:
           path: public
 
@@ -80,6 +111,7 @@ jobs:
   #       command: pages deploy public --project-name=usdg-data
   deploy:
     needs: snapshot
+    if: inputs.mode != 'dry-run'
     runs-on: ubuntu-latest
     permissions:
       pages: write

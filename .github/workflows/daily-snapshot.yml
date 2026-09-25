@@ -36,6 +36,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # Without this Python buffers its own output while the build step it
+      # shells out to writes straight through, so the log reads out of order
+      # and is misleading exactly when you're trying to diagnose a failure.
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -88,7 +93,12 @@ jobs:
         run: |
           git config user.name  "usdg-snapshot[bot]"
           git config user.email "usdg-snapshot[bot]@users.noreply.github.com"
-          git add usdg_all.json usdg_chains.json public/usdg-data.json
+          # Stage each file only if it exists: usdg_chains.json isn't created
+          # until the first snapshot run, and `git add` fails the whole step on
+          # a path that doesn't match anything.
+          for f in usdg_all.json usdg_chains.json public/usdg-data.json; do
+            if [ -f "$f" ]; then git add -- "$f"; fi
+          done
           if git diff --staged --quiet; then
             echo "nothing changed today"
           else

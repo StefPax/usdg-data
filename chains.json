@@ -1,21 +1,34 @@
 {
   "_comment": [
     "This is the only file you edit to add, remove or change a chain.",
-    "After editing, run:  python3 build_data.py     then deploy the /public folder.",
+    "After editing, run:  python3 build_data.py     then commit and push.",
     "The Framer component reads the generated JSON at runtime, so adding a chain",
     "never requires touching Framer.",
     "",
+    "Every figure is read from the chain that issued the tokens — no aggregator.",
+    "The daily job reads each contract server-side; the page reads them again in",
+    "the visitor's browser. Both use the addresses below.",
+    "",
     "Fields:",
-    "  name      display name. Must match the key in chain_logos_b64.json for the icon.",
-    "  enabled   set false to stage a chain before it goes live (kept out of the page).",
-    "  color     accent colour used for the card's left rule, bar gradient and hover border.",
-    "  whiteBg   true if the logo is dark artwork that needs a white tile behind it.",
-    "  snapshot  last known supply, used as the fallback if the live read fails.",
-    "  read      how the browser reads live supply.",
-    "              kind: 'evm' | 'solana' | 'none'",
-    "              evm    -> needs contract + decimals + rpcs (calls totalSupply)",
-    "              solana -> needs mint + rpcs (calls getTokenSupply)",
-    "              none   -> no live read; the snapshot value is shown as-is"
+    "  name       display name. Must match the key in chain_logos_b64.json for the icon.",
+    "  enabled    set false to stage a chain before it goes live (kept out of the page).",
+    "  color      accent colour for the card's left rule and hover border.",
+    "             (Supply bars are USDG green on every chain, not this colour.)",
+    "  whiteBg    true if the logo is dark artwork that needs a white tile behind it.",
+    "  seed       starting value, used only until the chain has been read once.",
+    "             Live values live in usdg_chains.json and are written by the job.",
+    "  read       how the supply is read.",
+    "               kind: 'evm' | 'solana' | 'none'",
+    "               evm    -> contract + decimals + rpcs (calls totalSupply)",
+    "               solana -> mint + rpcs (calls getTokenSupply)",
+    "               none   -> not read; the last known value is shown as-is",
+    "               explorers -> optional Blockscout API roots, tried only if every",
+    "                            RPC fails. Same chain, one step removed.",
+    "",
+    "  decimals is checked against the contract on every read. If they disagree the",
+    "  read is refused rather than published — a 6-vs-18 mistake would overstate a",
+    "  figure by a factor of a trillion. symbol() is checked against USDG the same",
+    "  way, so a wrong address fails loudly instead of showing someone else's token."
   ],
   "chains": [
     {
@@ -23,13 +36,14 @@
       "enabled": true,
       "color": "#C7C4C2",
       "whiteBg": true,
-      "snapshot": 1835509357,
+      "seed": 1835509357,
       "read": {
         "kind": "evm",
         "decimals": 6,
         "contract": "0x4ae46a509f6b1d9056937ba4500cb143933d2dc8",
         "rpcs": [
-          "https://rpc.xlayer.tech"
+          "https://rpc.xlayer.tech",
+          "https://xlayerrpc.okx.com"
         ]
       }
     },
@@ -38,8 +52,7 @@
       "enabled": true,
       "color": "#9945FF",
       "whiteBg": false,
-      "snapshot": null,
-      "residual": true,
+      "seed": 627509882,
       "read": {
         "kind": "solana",
         "mint": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
@@ -55,7 +68,7 @@
       "enabled": true,
       "color": "#627EEA",
       "whiteBg": false,
-      "snapshot": 378670250,
+      "seed": 378670250,
       "read": {
         "kind": "evm",
         "decimals": 6,
@@ -65,6 +78,9 @@
           "https://ethereum-rpc.publicnode.com",
           "https://rpc.ankr.com/eth",
           "https://eth.llamarpc.com"
+        ],
+        "explorers": [
+          "https://eth.blockscout.com"
         ]
       }
     },
@@ -73,14 +89,16 @@
       "enabled": true,
       "color": "#CCFF00",
       "whiteBg": false,
-      "snapshot": 328756086,
+      "seed": 328756086,
       "read": {
-        "kind": "none",
-        "_note": "RPC is public but the USDG contract is not wired yet. Fill in contract + decimals and switch kind to 'evm' to enable the live read.",
+        "kind": "evm",
         "decimals": 6,
-        "contract": null,
+        "contract": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
         "rpcs": [
           "https://rpc.mainnet.chain.robinhood.com"
+        ],
+        "explorers": [
+          "https://robinhoodchain.blockscout.com"
         ]
       }
     },
@@ -89,13 +107,16 @@
       "enabled": true,
       "color": "#6A34F0",
       "whiteBg": true,
-      "snapshot": 21117562,
+      "seed": 21117562,
       "read": {
         "kind": "evm",
         "decimals": 6,
         "contract": "0xe343167631d89B6Ffc58B88d6b7fB0228795491D",
         "rpcs": [
           "https://rpc-gel.inkonchain.com"
+        ],
+        "explorers": [
+          "https://explorer.inkonchain.com"
         ]
       }
     },
@@ -104,26 +125,28 @@
       "enabled": true,
       "color": "#93FFD3",
       "whiteBg": false,
-      "snapshot": 0,
+      "seed": 0,
       "read": {
         "kind": "evm",
         "decimals": 6,
-        "_decimals_unverified": "Colleague's note: 'assumed 6 decimals (new deployment, 2026-08-27)'. Verify before this carries real supply \u2014 if it is actually 18, the figure would be overstated by 1e12. The component clamps implausible reads, but the snapshot path has no such guard.",
         "contract": "0x063C1d1ef6e9099Ce3E8e9AD5C6173d12C49C086",
         "rpcs": [
           "https://rpc.mantle.xyz",
           "https://mantle-rpc.publicnode.com",
           "https://rpc.ankr.com/mantle"
+        ],
+        "explorers": [
+          "https://explorer.mantle.xyz"
         ]
       }
     },
     {
       "name": "Arbitrum",
       "enabled": false,
-      "_todo": "Planned in a few weeks. Set enabled=true and fill in the USDG contract address. Logo is already present in chain_logos_b64.json.",
+      "_todo": "Set enabled=true and fill in the USDG contract address. Logo is already present in chain_logos_b64.json.",
       "color": "#12AAFF",
       "whiteBg": false,
-      "snapshot": 0,
+      "seed": 0,
       "read": {
         "kind": "evm",
         "decimals": 6,
@@ -131,6 +154,9 @@
         "rpcs": [
           "https://arb1.arbitrum.io/rpc",
           "https://arbitrum-one-rpc.publicnode.com"
+        ],
+        "explorers": [
+          "https://arbitrum.blockscout.com"
         ]
       }
     }

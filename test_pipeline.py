@@ -216,14 +216,19 @@ def run_snapshot(tmp, values, argv=()):
         sys.path.remove(tmp)
 
 
-FULL = {
-    "X Layer": 1_835_509_357,
-    "Solana": 627_509_882,
-    "Ethereum": 378_670_250,
-    "Robinhood Chain": 328_756_086,
-    "Ink": 21_117_562,
-    "Mantle": 0,
-}
+def enabled_chains(path=os.path.join(BASE, "chains.json")):
+    """Every enabled chain and its seed value.
+
+    Derived from chains.json rather than hard-coded, so adding a chain doesn't
+    fail these tests for the wrong reason — and, because CI runs this file
+    before every snapshot, doesn't stop the daily job either.
+    """
+    with open(path, encoding="utf-8") as f:
+        cfg = json.load(f)
+    return {c["name"]: (c.get("seed") or 0) for c in cfg["chains"] if c.get("enabled")}
+
+
+FULL = enabled_chains()
 
 
 def test_snapshot():
@@ -234,7 +239,7 @@ def test_snapshot():
     hist = json.load(open(os.path.join(tmp, "usdg_all.json")))
     latest = max(hist, key=lambda d: int(d["date"]))
     check("records all chains", out, "ok")
-    check("per-chain file written", len(chains_file[-1]["chains"]), 6)
+    check("per-chain file written", len(chains_file[-1]["chains"]), len(FULL))
     check("total is the sum", latest["totalCirculating"]["peggedUSD"], sum(FULL.values()))
     check("no stale marker when all read", "stale" in chains_file[-1], False)
     shutil.rmtree(tmp)

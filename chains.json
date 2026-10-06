@@ -142,15 +142,14 @@
     },
     {
       "name": "Arbitrum",
-      "enabled": false,
-      "_todo": "Set enabled=true and fill in the USDG contract address. Logo is already present in chain_logos_b64.json.",
+      "enabled": true,
       "color": "#12AAFF",
       "whiteBg": false,
       "seed": 0,
       "read": {
         "kind": "evm",
         "decimals": 6,
-        "contract": null,
+        "contract": "0x004B506865409877C9fA29bfb1ebA929984B9bbC",
         "rpcs": [
           "https://arb1.arbitrum.io/rpc",
           "https://arbitrum-one-rpc.publicnode.com"
